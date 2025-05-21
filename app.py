@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, request, jsonify
 from fpdf import FPDF
 import pandas as pd
@@ -65,10 +68,29 @@ def calculate():
             capital_subsidy = min(0.15 * capital_investment, 2000000)
         else:
             capital_subsidy = 0
-
+        #Stamp duty subsidy 
         stamp_duty_subsidy = (zone_info["Stamp Duty (%)"]) * (0.07 * land_cost)
+
+        Land_Owned_by_Legal_Entity = input("Is the Land Owned by Legal Entity (Yes/No): ").strip().lower()
+        if Land_Owned_by_Legal_Entity == "yes":
+            land_cost = float(input("Enter the land cost: "))
+        else:
+           land_cost = 0.0  #not applicable
+
+        #Condition for loan
+        loan = input("Have you availed loan (Yes/No)? ").strip().lower()
+        if loan == "yes":
+            term_loan_amount = float(input("Enter term loan amount (Rs): "))
+            loan_tenure = input("Loan tenure (in years): ")
+        else:
+            term_loan_amount = 0.0
+            loan_tenure = "N/A"
+
+        #Interest Subsidy
         annual_interest = term_loan_amount * (zone_info["Interest Rate (%)"] / 100)
         interest_subsidy = min(annual_interest, 2000000) * zone_info["Interest Years"]
+
+        #SGST Reimbuirsement
         sgst_reimbursement = (
             net_sgst_paid_cash_ledger * (zone_info["SGST Initial (%)"] / 100) +
             net_sgst_paid_cash_ledger * (zone_info["SGST Extended (%)"] / 100)
