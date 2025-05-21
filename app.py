@@ -43,6 +43,7 @@ def calculate():
             return jsonify({"error": "Subdistrict not found"}), 400
 
         zone = matched_row.iloc[0]['Zone']
+        zone_info = zone_df[zone_df["Zone"] == zone].iloc[0]
 
         # Input values
         user_name = data.get("name", "")
@@ -54,13 +55,18 @@ def calculate():
         industry_type = data.get("industry_type", "")
         plant_machinery = float(data.get("plant_machinery", 0))
         building_civil_work = float(data.get("building_civil_work", 0))
-        land_cost = float(data.get("land_cost", 0))
-        term_loan_amount = float(data.get("term_loan_amount", 0))
-        loan_tenure = data.get("loan_tenure", "N/A")
         net_sgst_paid_cash_ledger = float(data.get("sgst_paid", 0))
         user_email = data.get("email", "")
 
-        zone_info = zone_df[zone_df["Zone"] == zone].iloc[0]
+        # Land info
+        land_owned = data.get("land_owned", "no").strip().lower() == "yes"
+        land_cost = float(data.get("land_cost", 0)) if land_owned else 0.0
+
+        # Loan info
+        loan_availed = data.get("loan_availed", "no").strip().lower() == "yes"
+        term_loan_amount = float(data.get("term_loan_amount", 0)) if loan_availed else 0.0
+        loan_tenure = data.get("loan_tenure", "N/A") if loan_availed else "N/A"
+
         capital_investment = plant_machinery + building_civil_work
 
         # Capital Investment Subsidy
@@ -68,29 +74,15 @@ def calculate():
             capital_subsidy = min(0.15 * capital_investment, 2000000)
         else:
             capital_subsidy = 0
-        #Stamp duty subsidy 
+
+        # Stamp Duty Subsidy
         stamp_duty_subsidy = (zone_info["Stamp Duty (%)"]) * (0.07 * land_cost)
 
-        Land_Owned_by_Legal_Entity = input("Is the Land Owned by Legal Entity (Yes/No): ").strip().lower()
-        if Land_Owned_by_Legal_Entity == "yes":
-            land_cost = float(input("Enter the land cost: "))
-        else:
-           land_cost = 0.0  #not applicable
-
-        #Condition for loan
-        loan = input("Have you availed loan (Yes/No)? ").strip().lower()
-        if loan == "yes":
-            term_loan_amount = float(input("Enter term loan amount (Rs): "))
-            loan_tenure = input("Loan tenure (in years): ")
-        else:
-            term_loan_amount = 0.0
-            loan_tenure = "N/A"
-
-        #Interest Subsidy
+        # Interest Subsidy
         annual_interest = term_loan_amount * (zone_info["Interest Rate (%)"] / 100)
         interest_subsidy = min(annual_interest, 2000000) * zone_info["Interest Years"]
 
-        #SGST Reimbuirsement
+        # SGST Reimbursement
         sgst_reimbursement = (
             net_sgst_paid_cash_ledger * (zone_info["SGST Initial (%)"] / 100) +
             net_sgst_paid_cash_ledger * (zone_info["SGST Extended (%)"] / 100)
@@ -106,7 +98,7 @@ def calculate():
             "total_subsidy": round(total_subsidy, 2)
         }
 
-        # PDF generation
+        # PDF Generation
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", "B", 16)
@@ -114,8 +106,8 @@ def calculate():
 
         pdf.set_font("Arial", "B", 12)
         pdf.cell(200, 10, txt="Input Details", ln=True)
-
         pdf.set_font("Arial", "", 11)
+
         inputs = {
             "Name": user_name,
             "Organization Name": organization_name,
@@ -125,11 +117,11 @@ def calculate():
             "Enterprise Size": enterprise_size,
             "Business Nature": buisness_nature,
             "Industry Type": industry_type,
-            "Plant & Machinery(Rs)": plant_machinery,
+            "Plant & Machinery (Rs)": plant_machinery,
             "Building & Civil Work (Rs)": building_civil_work,
             "Land Cost (Rs.)": land_cost,
             "Term Loan Amount (Rs)": term_loan_amount,
-            "Loan tenure": loan_tenure,
+            "Loan Tenure": loan_tenure,
             "SGST Paid (Rs.)": net_sgst_paid_cash_ledger
         }
 
@@ -139,8 +131,8 @@ def calculate():
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(200, 10, txt="Subsidy Calculation Result", ln=True)
-
         pdf.set_font("Arial", "", 11)
+
         for k, v in result.items():
             pdf.cell(200, 8, txt=f"{k}: Rs.{v:,.2f}", ln=True)
 
@@ -150,10 +142,9 @@ def calculate():
         # Send email
         msg = EmailMessage()
         msg['Subject'] = "Subsidy Calculation Report"
-        msg['From'] = os.getenv("SMTP_USER")  # company-email
+        msg['From'] = os.getenv("SMTP_USER")
         msg['To'] = user_email
-
-        msg.set_content("Dear {},\n\nPlease find attached your subsidy calculation report.".format(user_name))
+        msg.set_content(f"Dear {user_name},\n\nPlease find attached your subsidy calculation report.")
 
         with open(file_path, "rb") as f:
             msg.add_attachment(f.read(), maintype="application", subtype="pdf", filename="Subsidy_Calculation_Report.pdf")
@@ -166,7 +157,6 @@ def calculate():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)
