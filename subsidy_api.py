@@ -125,14 +125,16 @@ def calculate():
     )
 
     pdf_path = generate_pdf(user_data, result)
+    
 
-   return jsonify({
+       return jsonify({
             "zone": result["zone"],
             "subsidy_breakup": result["subsidy_breakup"],
             "pdf_report_path": result["pdf_path"]
         }), 200
-   except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
