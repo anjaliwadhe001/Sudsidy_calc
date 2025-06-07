@@ -150,7 +150,7 @@ def calculate():
         with open(file_path, "rb") as f:
             msg.add_attachment(f.read(), maintype="application", subtype="pdf", filename="Subsidy_Calculation_Report.pdf")
 
-        with smtplib.SMTP_SSL("smtp.zoho.in", 465) as smtp:
+       with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASS"))
             smtp.send_message(msg)
 
